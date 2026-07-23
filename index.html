@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MRZP Wizard — Center of Rotation Solver</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel2:#0f151d; --line:#243040;
+    --txt:#e8edf2; --muted:#8b98a8; --accent:#4aa8ff; --good:#37d67a; --warn:#ffb020; --bad:#ff6b6b;
+    --mono:'SF Mono',ui-monospace,'Cascadia Code','Consolas',monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.45}
+  .wrap{max-width:1080px;margin:0 auto;padding:20px 16px 80px}
+  header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+  header h1{font-size:22px;margin:0;letter-spacing:.5px}
+  header .sub{color:var(--muted);font-size:13px}
+  .tag{margin-left:auto;font-size:11px;color:var(--muted);border:1px solid var(--line);padding:3px 8px;border-radius:20px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+  .card h2{font-size:14px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin:0 0 12px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+  .fld{display:flex;flex-direction:column;gap:5px}
+  .fld label{font-size:12px;color:var(--muted)}
+  select,input[type=text],input[type=number]{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:8px 10px;font-size:14px;font-family:var(--mono)}
+  select{font-family:system-ui,sans-serif}
+  input:focus,select:focus{outline:none;border-color:var(--accent)}
+  .btn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:8px 14px;font-size:13px;cursor:pointer;transition:.15s}
+  .btn:hover{border-color:var(--accent);color:#fff}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#06121f;font-weight:600}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:5px 9px;font-size:12px}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono)}
+  th,td{padding:6px 8px;text-align:center;border-bottom:1px solid var(--line);font-size:13px}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-family:system-ui}
+  td input{width:92px;text-align:center;padding:6px}
+  td.rn{color:var(--muted);width:26px}
+  .del{color:var(--bad);cursor:pointer;font-size:15px;opacity:.6}
+  .del:hover{opacity:1}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
+  .stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+  .stat .v{font-size:26px;font-family:var(--mono);margin-top:6px;font-weight:600}
+  .stat .u{font-size:11px;color:var(--muted)}
+  .mrzp{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+  .mrzp .box{background:linear-gradient(160deg,#13202e,#0f151d);border:1px solid #2a4058;border-radius:12px;padding:14px;text-align:center}
+  .mrzp .box .lbl{font-size:11px;color:var(--accent);letter-spacing:1px}
+  .mrzp .box .set{font-size:11px;color:var(--muted)}
+  .mrzp .box .val{font-size:24px;font-family:var(--mono);font-weight:700;margin-top:6px}
+  .note{font-size:12.5px;color:var(--muted);margin-top:10px}
+  .banner{border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:12px;display:none}
+  .banner.good{background:rgba(55,214,122,.12);border:1px solid var(--good);color:#bff5d6;display:block}
+  .banner.warn{background:rgba(255,176,32,.12);border:1px solid var(--warn);color:#ffe1a8;display:block}
+  .banner.bad{background:rgba(255,107,107,.12);border:1px solid var(--bad);color:#ffc9c9;display:block}
+  details{margin-top:6px}
+  summary{cursor:pointer;color:var(--accent);font-size:13px}
+  .resid td.big{color:var(--warn)}
+  .resid td.ok{color:var(--good)}
+  code{font-family:var(--mono);background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:12px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .muted{color:var(--muted)}
+  .grp{font-size:11px;color:var(--accent);letter-spacing:1.5px;font-weight:600;margin-bottom:8px}
+  .greyed{opacity:.32;pointer-events:none}
+  .na{color:var(--warn);font-size:11px}
+  #tbl.singlecol th:nth-child(3),#tbl.singlecol td:nth-child(3){display:none}
+  @media(max-width:640px){.grid3{grid-template-columns:1fr}.mrzp{grid-template-columns:1fr}td input{width:70px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MRZP WIZARD</h1>
+    <span class="sub">Center-of-rotation solver</span>
+    <span class="tag">CAC Industries · Haas 4th/5th</span>
+  </header>
+
+  <div class="card">
+    <h2>How it works</h2>
+    <div class="note" style="color:var(--txt)">
+      Run <code>O00005 (DWO ACCURACY TEST)</code> at several angle combos, read the X/Y/Z <b>error</b>
+      (G154&nbsp;P53 = probed − target) for each, and type them in below. This fits the correction
+      <b>δ</b> that makes the error vanish, using <code>error = (I − R)·δ</code>. The suggested MRZP is
+      <b>current setting + δ</b>. Check the residuals before you touch a setting — big residuals mean bad
+      data or wrong axis map, not a real center.
+    </div>
+    <details>
+      <summary>Ground rules for good numbers</summary>
+      <div class="note">
+        • Set G54 to the ball center at HOME (all rotaries 0) before running the test — same as an MRZP cal.<br>
+        • Give it variety: for X/Y you need at least two different rotary (C) angles; to pin <b>Z</b> you need a
+        tilt (A/B) angle in the mix. Pure C-only data can't find δZ.<br>
+        • 5–8 rows spread across the travel beats 3 clustered ones. More rows = averages out probe noise.<br>
+        • Units don't matter to the math — just keep every number in the same unit as Setting 9 (inch or mm).
+      </div>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Machine setup</h2>
+    <div class="row">
+      <div class="fld">
+        <label>Rotary axis definition (#4 in O00005)</label>
+        <select id="axisDef">
+          <option value="1">1 — A only (tilt about X)</option>
+          <option value="2">2 — B only (tilt about Y)</option>
+          <option value="3">3 — C only (rotary about Z)</option>
+          <option value="4">4 — A / B</option>
+          <option value="5" selected>5 — A / C  (A tilt + C rotary)</option>
+          <option value="6">6 — B / C  (B tilt + C rotary)</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>Units</label>
+        <select id="units"><option value="in">inch</option><option value="mm">mm</option></select>
+      </div>
+      <div class="fld">
+        <label>Error direction</label>
+        <select id="errdir">
+          <option value="1" selected>probed − target (Haas P53)</option>
+          <option value="-1">target − probed (flipped)</option>
+        </select>
+      </div>
+      <div class="fld">
+        <label>MRZP type</label>
+        <select id="mrzpType">
+          <option value="reg" selected>Regular MRZP — 255 / 256 / 257</option>
+          <option value="single">Single axis — 300–305</option>
+        </select>
+      </div>
+      <div class="fld" id="msWrap" style="display:none">
+        <label>Rotary</label>
+        <select id="msSel">
+          <option value="master" selected>Master — 300 / 301 / 302</option>
+          <option value="slave">Slave — 303 / 304 / 305</option>
+        </select>
+      </div>
+    </div>
+    <div id="curReg" class="row" style="margin-top:14px">
+      <div class="fld"><label>Current MRZP X — Setting 255</label><input id="m255" type="number" step="any" placeholder="optional"></div>
+      <div class="fld"><label>Current MRZP Y — Setting 256</label><input id="m256" type="number" step="any" placeholder="optional"></div>
+      <div class="fld"><label>Current MRZP Z — Setting 257</label><input id="m257" type="number" step="any" placeholder="optional"></div>
+    </div>
+    <div id="curSingle" style="display:none;margin-top:14px">
+      <div class="grp">MASTER rotary — 4th axis</div>
+      <div class="row">
+        <div class="fld" id="f300"><label>X — Setting 300</label><input id="s300" type="number" step="any" placeholder="optional"></div>
+        <div class="fld" id="f301"><label>Y — Setting 301</label><input id="s301" type="number" step="any" placeholder="optional"></div>
+        <div class="fld" id="f302"><label>Z — Setting 302</label><input id="s302" type="number" step="any" placeholder="optional"></div>
+      </div>
+      <div class="grp" style="margin-top:12px">SLAVE rotary — 5th axis</div>
+      <div class="row">
+        <div class="fld" id="f303"><label>X — Setting 303</label><input id="s303" type="number" step="any" placeholder="optional"></div>
+        <div class="fld" id="f304"><label>Y — Setting 304</label><input id="s304" type="number" step="any" placeholder="optional"></div>
+        <div class="fld" id="f305"><label>Z — Setting 305</label><input id="s305" type="number" step="any" placeholder="optional"></div>
+      </div>
+    </div>
+    <div class="note" id="curNote">Enter your current 255/256/257 to get the exact new values to type into the control. Leave blank to just see the correction δ.</div>
+  </div>
+
+  <div class="card">
+    <h2>Measured errors</h2>
+    <table id="tbl">
+      <thead><tr>
+        <th class="rn">#</th>
+        <th id="th4">4th axis °<br><span class="muted" style="font-weight:400">(#1)</span></th>
+        <th>5th axis °<br><span class="muted" style="font-weight:400">(#2)</span></th>
+        <th>X error</th><th>Y error</th><th>Z error</th><th></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="toolbar">
+      <button class="btn sm" id="add">+ Add row</button>
+      <button class="btn sm ghost" id="clear">Clear all</button>
+      <button class="btn sm ghost" id="example">Load worked example</button>
+      <button class="btn primary" id="solve" style="margin-left:auto">Solve center of rotation</button>
+    </div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h2>Result</h2>
+    <div id="banner" class="banner"></div>
+
+    <div class="grid3">
+      <div class="stat"><div class="k">δX</div><div class="v" id="dx">—</div><div class="u" id="u1"></div></div>
+      <div class="stat"><div class="k">δY</div><div class="v" id="dy">—</div><div class="u" id="u2"></div></div>
+      <div class="stat"><div class="k">δZ</div><div class="v" id="dz">—</div><div class="u" id="u3"></div></div>
+    </div>
+
+    <div id="mrzpOut" style="display:none">
+      <div class="note" style="margin-top:16px;color:var(--txt)"><b>Suggested new MRZP</b> — current + δ. Type these into the control, then re-run O00005 to confirm error drops to ~0.</div>
+      <div id="outReg" class="mrzp">
+        <div class="box"><div class="lbl">MRZP X</div><div class="set">Setting 255</div><div class="val" id="n255">—</div></div>
+        <div class="box"><div class="lbl">MRZP Y</div><div class="set">Setting 256</div><div class="val" id="n256">—</div></div>
+        <div class="box"><div class="lbl">MRZP Z</div><div class="set">Setting 257</div><div class="val" id="n257">—</div></div>
+      </div>
+      <div id="outSingle" style="display:none">
+        <div class="grp">MASTER — 4th axis</div>
+        <div class="mrzp">
+          <div class="box" id="b300"><div class="lbl">X</div><div class="set">Setting 300</div><div class="val" id="n300">—</div></div>
+          <div class="box" id="b301"><div class="lbl">Y</div><div class="set">Setting 301</div><div class="val" id="n301">—</div></div>
+          <div class="box" id="b302"><div class="lbl">Z</div><div class="set">Setting 302</div><div class="val" id="n302">—</div></div>
+        </div>
+        <div class="grp" style="margin-top:12px">SLAVE — 5th axis</div>
+        <div class="mrzp">
+          <div class="box" id="b303"><div class="lbl">X</div><div class="set">Setting 303</div><div class="val" id="n303">—</div></div>
+          <div class="box" id="b304"><div class="lbl">Y</div><div class="set">Setting 304</div><div class="val" id="n304">—</div></div>
+          <div class="box" id="b305"><div class="lbl">Z</div><div class="set">Setting 305</div><div class="val" id="n305">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid3" style="margin-top:16px">
+      <div class="stat"><div class="k">RMS residual</div><div class="v" id="rms" style="font-size:22px">—</div><div class="u">after correction</div></div>
+      <div class="stat"><div class="k">Max residual</div><div class="v" id="maxr" style="font-size:22px">—</div><div class="u" id="maxrow"></div></div>
+      <div class="stat"><div class="k">Rows used</div><div class="v" id="nrows" style="font-size:22px">—</div><div class="u">measurements</div></div>
+    </div>
+
+    <details style="margin-top:14px" open>
+      <summary>Per-row residuals (leftover error the fit can't explain)</summary>
+      <table class="resid" style="margin-top:8px"><thead><tr>
+        <th>#</th><th>4th °</th><th>5th °</th><th>res X</th><th>res Y</th><th>res Z</th><th>|res|</th>
+      </tr></thead><tbody id="residBody"></tbody></table>
+      <div class="note">A row that stays large after the fit is the odd one out — re-check that probe. Overall, residuals should be near your machine's repeatability.</div>
+    </details>
+  </div>
+
+  <div class="note" style="text-align:center;margin-top:20px">
+    Calculator only — it never writes to the machine. Verify with a re-probe before trusting the numbers.
+  </div>
+</div>
+
+<script>
+// ---------- rotation math ----------
+function deg(d){return d*Math.PI/180;}
+function matI(){return [[1,0,0],[0,1,0],[0,0,1]];}
+function Rx(a){var c=Math.cos(a),s=Math.sin(a);return [[1,0,0],[0,c,-s],[0,s,c]];}
+function Ry(a){var c=Math.cos(a),s=Math.sin(a);return [[c,0,s],[0,1,0],[-s,0,c]];}
+function Rz(a){var c=Math.cos(a),s=Math.sin(a);return [[c,-s,0],[s,c,0],[0,0,1]];}
+function mul(A,B){var C=[[0,0,0],[0,0,0],[0,0,0]];for(var i=0;i<3;i++)for(var j=0;j<3;j++){var s=0;for(var k=0;k<3;k++)s+=A[i][k]*B[k][j];C[i][j]=s;}return C;}
+function sub(A,B){var C=[[0,0,0],[0,0,0],[0,0,0]];for(var i=0;i<3;i++)for(var j=0;j<3;j++)C[i][j]=A[i][j]-B[i][j];return C;}
+function matVec(A,v){return [A[0][0]*v[0]+A[0][1]*v[1]+A[0][2]*v[2],A[1][0]*v[0]+A[1][1]*v[1]+A[1][2]*v[2],A[2][0]*v[0]+A[2][1]*v[1]+A[2][2]*v[2]];}
+function axisRot(letter,angDeg){var a=deg(angDeg);return letter==='A'?Rx(a):letter==='B'?Ry(a):Rz(a);}
+
+// axis roles per #4 definition: [tilt fn or null, rotary fn or null]
+// 1 A, 2 B, 3 C, 4 A/B, 5 A/C, 6 B/C
+function axisFns(def){
+  switch(def){
+    case '1': return {a4:Rx, a5:null};              // A only
+    case '2': return {a4:Ry, a5:null};              // B only
+    case '3': return {a4:Rz, a5:null};              // C only (single, angle in 4th col)
+    case '4': return {a4:Rx, a5:Ry};               // A/B
+    case '5': return {a4:Rx, a5:Rz};               // A/C
+    case '6': return {a4:Ry, a5:Rz};               // B/C
+  }
+  return {a4:Rx,a5:Rz};
+}
+// combined rotation: R = R4(4th) . R5(5th)   (4th = carrier/trunnion, 5th = carried platter)
+function Rcombined(def,t4,t5){
+  var f=axisFns(def);
+  var R4 = f.a4 ? f.a4(deg(t4)) : matI();
+  var R5 = f.a5 ? f.a5(deg(t5)) : matI();
+  return mul(R4,R5);
+}
+
+// solve 3x3 N x = b, Gaussian elimination w/ partial pivot; returns {x, unconstrained:[bool x3]}
+function solve3(N,b){
+  var M=[[N[0][0],N[0][1],N[0][2],b[0]],
+         [N[1][0],N[1][1],N[1][2],b[1]],
+         [N[2][0],N[2][1],N[2][2],b[2]]];
+  var unc=[false,false,false];
+  var scale=Math.max(1e-12, Math.abs(N[0][0])+Math.abs(N[1][1])+Math.abs(N[2][2]));
+  for(var col=0;col<3;col++){
+    // pivot
+    var p=col,best=Math.abs(M[col][col]);
+    for(var r=col+1;r<3;r++){if(Math.abs(M[r][col])>best){best=Math.abs(M[r][col]);p=r;}}
+    if(best < scale*1e-9){ unc[col]=true; continue; } // column unconstrained
+    var tmp=M[col];M[col]=M[p];M[p]=tmp;
+    var pv=M[col][col];
+    for(var j=col;j<4;j++)M[col][j]/=pv;
+    for(var r2=0;r2<3;r2++){if(r2!==col){var f=M[r2][col];for(var j2=col;j2<4;j2++)M[r2][j2]-=f*M[col][j2];}}
+  }
+  var x=[0,0,0];
+  for(var i=0;i<3;i++){ x[i]= unc[i]?0:M[i][3]; }
+  return {x:x, unc:unc};
+}
+
+// ---------- table handling ----------
+var rowsEl=document.getElementById('rows');
+function addRow(vals){
+  vals=vals||{};
+  var tr=document.createElement('tr');
+  tr.innerHTML='<td class="rn"></td>'+
+    '<td><input type="number" step="any" class="c4" placeholder="0"></td>'+
+    '<td><input type="number" step="any" class="c5" placeholder="0"></td>'+
+    '<td><input type="number" step="any" class="ex" placeholder="0"></td>'+
+    '<td><input type="number" step="any" class="ey" placeholder="0"></td>'+
+    '<td><input type="number" step="any" class="ez" placeholder="0"></td>'+
+    '<td><span class="del">✕</span></td>';
+  rowsEl.appendChild(tr);
+  if(vals.c4!==undefined)tr.querySelector('.c4').value=vals.c4;
+  if(vals.c5!==undefined)tr.querySelector('.c5').value=vals.c5;
+  if(vals.ex!==undefined)tr.querySelector('.ex').value=vals.ex;
+  if(vals.ey!==undefined)tr.querySelector('.ey').value=vals.ey;
+  if(vals.ez!==undefined)tr.querySelector('.ez').value=vals.ez;
+  tr.querySelector('.del').onclick=function(){tr.remove();renumber();};
+  renumber();
+}
+function renumber(){var i=1;rowsEl.querySelectorAll('tr').forEach(function(tr){tr.querySelector('.rn').textContent=i++;});}
+function readRows(){
+  var out=[];
+  rowsEl.querySelectorAll('tr').forEach(function(tr){
+    function g(c){var v=parseFloat(tr.querySelector(c).value);return isNaN(v)?null:v;}
+    var c4=g('.c4'),c5=g('.c5'),ex=g('.ex'),ey=g('.ey'),ez=g('.ez');
+    // a row counts if it has all three errors and at least one angle
+    if(ex!==null&&ey!==null&&ez!==null&&(c4!==null||c5!==null)){
+      out.push({c4:c4||0,c5:c5||0,ex:ex,ey:ey,ez:ez});
+    }
+  });
+  return out;
+}
+
+// ---------- solve ----------
+function fmt(v){ var u=document.getElementById('units').value; var dp=u==='mm'?4:5; return (v>=0?'+':'')+v.toFixed(dp); }
+function fmtAbs(v){ var u=document.getElementById('units').value; var dp=u==='mm'?4:5; return v.toFixed(dp); }
+
+document.getElementById('solve').onclick=function(){
+  var def=document.getElementById('axisDef').value;
+  var edir=parseFloat(document.getElementById('errdir').value);
+  var rows=readRows();
+  var banner=document.getElementById('banner');
+  var card=document.getElementById('resultCard');
+  card.style.display='block';
+
+  if(rows.length<2){
+    banner.className='banner bad';
+    banner.textContent='Need at least 2 complete rows (all X/Y/Z errors + an angle). Add more measurements.';
+    return;
+  }
+
+  // single-axis mode: one rotary moves per run; the "Rotary angle" column drives
+  // whichever rotary (master=4th / slave=5th) is selected.
+  var single=document.getElementById('mrzpType').value==='single';
+  var combo=comboOf(def);
+  var rotary=document.getElementById('msSel').value;
+  var selAxis = single ? (rotary==='master'?combo[0]:combo[1]) : null;
+
+  // build normal equations: for each row, M=(I-R); accumulate MᵀM and Mᵀe
+  var N=[[0,0,0],[0,0,0],[0,0,0]], b=[0,0,0];
+  var Ms=[];
+  rows.forEach(function(r){
+    var R = single ? axisRot(selAxis, r.c4) : Rcombined(def,r.c4,r.c5);
+    var M=sub(matI(),R);
+    Ms.push(M);
+    var e=[edir*r.ex, edir*r.ey, edir*r.ez];
+    for(var i=0;i<3;i++){
+      for(var j=0;j<3;j++){
+        for(var k=0;k<3;k++)N[i][j]+=M[k][i]*M[k][j];
+      }
+      for(var k2=0;k2<3;k2++)b[i]+=M[k2][i]*e[k2];
+    }
+  });
+
+  var sol=solve3(N,b);
+  var d=sol.x;
+
+  // residuals
+  var sumsq=0, maxr=0, maxIdx=-1, residRows=[];
+  rows.forEach(function(r,idx){
+    var M=Ms[idx];
+    var pred=matVec(M,d);
+    var e=[edir*r.ex,edir*r.ey,edir*r.ez];
+    var res=[pred[0]-e[0],pred[1]-e[1],pred[2]-e[2]];
+    var mag=Math.sqrt(res[0]*res[0]+res[1]*res[1]+res[2]*res[2]);
+    sumsq+=res[0]*res[0]+res[1]*res[1]+res[2]*res[2];
+    if(mag>maxr){maxr=mag;maxIdx=idx+1;}
+    residRows.push({r:r,res:res,mag:mag,i:idx+1});
+  });
+  var rms=Math.sqrt(sumsq/(rows.length*3));
+
+  // display
+  document.getElementById('dx').textContent=sol.unc[0]?'n/a':fmt(d[0]);
+  document.getElementById('dy').textContent=sol.unc[1]?'n/a':fmt(d[1]);
+  document.getElementById('dz').textContent=sol.unc[2]?'n/a':fmt(d[2]);
+  var u=document.getElementById('units').value;
+  document.getElementById('u1').textContent=u;document.getElementById('u2').textContent=u;document.getElementById('u3').textContent=u;
+
+  // new MRZP output  (single, combo, rotary, selAxis computed at top of solve)
+  var mo=document.getElementById('mrzpOut');
+  if(!single){
+    var m255=parseFloat(document.getElementById('m255').value);
+    var m256=parseFloat(document.getElementById('m256').value);
+    var m257=parseFloat(document.getElementById('m257').value);
+    var anyCur=!isNaN(m255)||!isNaN(m256)||!isNaN(m257);
+    mo.style.display=anyCur?'block':'none';
+    if(anyCur){
+      document.getElementById('n255').textContent=(!isNaN(m255)&&!sol.unc[0])?fmtAbs(m255+d[0]):'—';
+      document.getElementById('n256').textContent=(!isNaN(m256)&&!sol.unc[1])?fmtAbs(m256+d[1]):'—';
+      document.getElementById('n257').textContent=(!isNaN(m257)&&!sol.unc[2])?fmtAbs(m257+d[2]):'—';
+    }
+  } else {
+    mo.style.display='block';
+    var selBase=rotary==='master'?300:303, othBase=rotary==='master'?303:300;
+    var othAxis=rotary==='master'?combo[1]:combo[0];
+    // solved rotary: current + delta (skip the axis it spins about / unconstrained)
+    for(var i=0;i<3;i++){
+      var cv=parseFloat(document.getElementById('s'+(selBase+i)).value);
+      var el=document.getElementById('n'+(selBase+i));
+      var unused=(selAxis && dropIdx(selAxis)===i);
+      el.textContent=(unused||sol.unc[i])?'n/a':(!isNaN(cv)?fmtAbs(cv+d[i]):'—');
+    }
+    // other rotary: unchanged (not exercised this run)
+    for(var j=0;j<3;j++){
+      var cv2=parseFloat(document.getElementById('s'+(othBase+j)).value);
+      var el2=document.getElementById('n'+(othBase+j));
+      var unused2=(othAxis && dropIdx(othAxis)===j);
+      el2.textContent=unused2?'n/a':(!isNaN(cv2)?fmtAbs(cv2):'—');
+    }
+  }
+
+  document.getElementById('rms').textContent=fmtAbs(rms);
+  document.getElementById('maxr').textContent=fmtAbs(maxr);
+  document.getElementById('maxrow').textContent=maxIdx>0?('row '+maxIdx):'';
+  document.getElementById('nrows').textContent=rows.length;
+
+  var rb=document.getElementById('residBody');rb.innerHTML='';
+  residRows.forEach(function(x){
+    var big=x.mag>Math.max(2*rms,1e-9)&&x.mag>1e-6;
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td>'+x.i+'</td><td>'+x.r.c4+'</td><td>'+x.r.c5+'</td>'+
+      '<td>'+fmt(x.res[0])+'</td><td>'+fmt(x.res[1])+'</td><td>'+fmt(x.res[2])+'</td>'+
+      '<td class="'+(big?'big':'ok')+'">'+fmtAbs(x.mag)+'</td>';
+    rb.appendChild(tr);
+  });
+
+  // banner verdict
+  var warns=[];
+  // in single-axis mode the rotary's own spin axis is unused BY DESIGN — don't flag it
+  var expectUnused = (single && selAxis) ? dropIdx(selAxis) : -1;
+  var names=[];var lbl=['δX','δY','δZ'];
+  for(var ui=0;ui<3;ui++){ if(sol.unc[ui] && ui!==expectUnused) names.push(lbl[ui]); }
+  if(names.length){
+    warns.push(names.join(', ')+' not determined — your angle combos don\'t excite '+(names.length>1?'those axes':'that axis')+'. Add a '+(names.indexOf('δZ')>=0?'tilt (A/B)':'different rotary')+' angle.');
+  }
+  var thresh = u==='mm'?0.01:0.0004; // ~0.01mm / .0004"
+  if(maxr>thresh) warns.push('Row '+maxIdx+' leaves '+fmtAbs(maxr)+' '+u+' unexplained — re-check that probe or the axis definition.');
+
+  if(warns.length===0){
+    banner.className='banner good';
+    banner.innerHTML='Good fit. RMS residual '+fmtAbs(rms)+' '+u+' across '+rows.length+' rows — the center is well determined.';
+  } else {
+    banner.className='banner warn';
+    banner.innerHTML=warns.map(function(w){return '⚠ '+w;}).join('<br>');
+  }
+  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+
+document.getElementById('add').onclick=function(){addRow();};
+document.getElementById('clear').onclick=function(){rowsEl.innerHTML='';for(var i=0;i<5;i++)addRow();document.getElementById('resultCard').style.display='none';};
+
+// worked example: synthesize error from a known δ so the solver visibly recovers it
+document.getElementById('example').onclick=function(){
+  document.getElementById('axisDef').value='5'; // A/C
+  document.getElementById('units').value='in';
+  document.getElementById('errdir').value='1';
+  document.getElementById('m255').value='-0.4210';
+  document.getElementById('m256').value='0.0035';
+  document.getElementById('m257').value='-2.8750';
+  var trueD=[0.0021,-0.0013,0.0034];
+  var combos=[[25,30],[25,120],[-35,0],[-35,180],[15,240],[0,90],[-55,60]];
+  rowsEl.innerHTML='';
+  combos.forEach(function(c){
+    var R=Rcombined('5',c[0],c[1]);
+    var M=sub(matI(),R);
+    var e=matVec(M,trueD); // probed-target
+    // add a touch of realistic noise
+    function n(){return (Math.random()-0.5)*0.00006;}
+    addRow({c4:c[0],c5:c[1],ex:(e[0]+n()).toFixed(5),ey:(e[1]+n()).toFixed(5),ez:(e[2]+n()).toFixed(5)});
+  });
+  document.getElementById('solve').click();
+};
+
+// ---------- MRZP type -> setting numbers ----------
+// axis combo -> [masterAxisLetter, slaveAxisLetter]; single defs have no slave
+function comboOf(def){return {'1':['A',null],'2':['B',null],'3':['C',null],'4':['A','B'],'5':['A','C'],'6':['B','C']}[def];}
+// coordinate index a rotary CANNOT resolve = the axis it spins about (A->X0, B->Y1, C->Z2)
+function dropIdx(letter){return {'A':0,'B':1,'C':2}[letter];}
+
+function applyType(){
+  var t=document.getElementById('mrzpType').value;
+  var single = t==='single';
+  document.getElementById('msWrap').style.display = single ? '' : 'none';
+  document.getElementById('curReg').style.display = single ? 'none' : '';
+  document.getElementById('curSingle').style.display = single ? '' : 'none';
+  document.getElementById('outReg').style.display = single ? 'none' : '';
+  document.getElementById('outSingle').style.display = single ? '' : 'none';
+  document.getElementById('tbl').classList.toggle('singlecol', single);
+  document.getElementById('th4').innerHTML = single
+    ? 'Rotary angle °'
+    : '4th axis °<br><span class="muted" style="font-weight:400">(#1)</span>';
+  if(single) markUnused();
+}
+
+// grey the two settings the axis combination can't determine
+function markUnused(){
+  var c=comboOf(document.getElementById('axisDef').value);
+  var ids=['300','301','302','303','304','305'];
+  ids.forEach(function(id){
+    var f=document.getElementById('f'+id); if(f){f.classList.remove('greyed');var na=f.querySelector('.na');if(na)na.remove();}
+    var b=document.getElementById('b'+id); if(b)b.classList.remove('greyed');
+  });
+  function drop(base,axis){
+    if(!axis) return;
+    var id=''+(base+dropIdx(axis));
+    var f=document.getElementById('f'+id);
+    if(f){f.classList.add('greyed');var lab=f.querySelector('label');var s=document.createElement('span');s.className='na';s.textContent='  · not used ('+axis+'-axis)';lab.appendChild(s);var inp=f.querySelector('input');inp.disabled=true;}
+    var b=document.getElementById('b'+id);if(b){b.classList.add('greyed');b.querySelector('.val').textContent='n/a';}
+  }
+  drop(300,c[0]); // master spins about its axis -> that coord unused
+  drop(303,c[1]); // slave  spins about its axis -> that coord unused
+}
+document.getElementById('mrzpType').addEventListener('change',applyType);
+document.getElementById('msSel').addEventListener('change',applyType);
+document.getElementById('axisDef').addEventListener('change',function(){ if(document.getElementById('mrzpType').value==='single') markUnused(); });
+applyType();
+
+// seed empty rows
+for(var i=0;i<5;i++)addRow();
+</script>
+</body>
+</html>
