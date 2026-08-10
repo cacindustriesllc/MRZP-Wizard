@@ -337,8 +337,10 @@ document.getElementById('solve').onclick=function(){
     return;
   }
 
-  // single-axis mode: one rotary moves per run; the "Rotary angle" column drives
-  // whichever rotary (master=4th / slave=5th) is selected.
+  // single-axis mode uses the same combined 4th×5th rotation as regular; the
+  // Master/Slave pick only routes the output to 300-302 / 303-305 and greys the
+  // setting along the selected rotary's own spin axis. Run one rotary at a time
+  // (put its angle in its column, leave the other at 0).
   var single=document.getElementById('mrzpType').value==='single';
   var combo=comboOf(def);
   var rotary=document.getElementById('msSel').value;
@@ -348,7 +350,7 @@ document.getElementById('solve').onclick=function(){
   var N=[[0,0,0],[0,0,0],[0,0,0]], b=[0,0,0];
   var Ms=[];
   rows.forEach(function(r){
-    var R = single ? axisRot(selAxis, r.c4) : Rcombined(def,r.c4,r.c5);
+    var R = Rcombined(def,r.c4,r.c5);
     var M=sub(matI(),R);
     Ms.push(M);
     var e=[edir*r.ex, edir*r.ey, edir*r.ez];
@@ -493,10 +495,7 @@ function applyType(){
   document.getElementById('curSingle').style.display = single ? '' : 'none';
   document.getElementById('outReg').style.display = single ? 'none' : '';
   document.getElementById('outSingle').style.display = single ? '' : 'none';
-  document.getElementById('tbl').classList.toggle('singlecol', single);
-  document.getElementById('th4').innerHTML = single
-    ? 'Rotary angle °'
-    : '4th axis °<br><span class="muted" style="font-weight:400">(#1)</span>';
+  // single-axis uses the same 4th + 5th angle columns as regular
   if(single) markUnused();
 }
 
