@@ -207,6 +207,11 @@
           <div class="box" id="b305"><div class="lbl">Z</div><div class="set">Setting 305</div><div class="val" id="n305">—</div></div>
         </div>
       </div>
+      <div class="toolbar" style="margin-top:14px">
+        <button class="btn" id="apply">&#8593; Use these as the current values</button>
+        <span class="note" id="applyMsg" style="margin-top:0;align-self:center"></span>
+      </div>
+      <div class="note">Copies the suggested values up into the <b>Machine setup</b> boxes, so after you type them into the control you can re-run O00005 and solve again from the new baseline. Values marked <b>n/a</b> are left alone.</div>
     </div>
 
     <div class="grid3" style="margin-top:16px">
@@ -458,6 +463,36 @@ document.getElementById('solve').onclick=function(){
 
 document.getElementById('add').onclick=function(){addRow();};
 document.getElementById('clear').onclick=function(){rowsEl.innerHTML='';for(var i=0;i<5;i++)addRow();document.getElementById('resultCard').style.display='none';};
+
+// copy the suggested values back up into the "current value" boxes so the next
+// solve starts from the numbers you just typed into the control
+document.getElementById('apply').onclick=function(){
+  var single=document.getElementById('mrzpType').value==='single';
+  var pairs = single
+    ? [['n300','s300'],['n301','s301'],['n302','s302'],['n303','s303'],['n304','s304'],['n305','s305']]
+    : [['n255','m255'],['n256','m256'],['n257','m257']];
+  var n=0;
+  pairs.forEach(function(p){
+    var txt=document.getElementById(p[0]).textContent.trim();
+    var num=parseFloat(txt);
+    if(txt==='n/a'||txt==='—'||isNaN(num)) return;   // leave unused/blank ones alone
+    var inp=document.getElementById(p[1]);
+    inp.value=num;
+    inp.style.borderColor='var(--good)';
+    (function(el){setTimeout(function(){el.style.borderColor='';},1200);})(inp);
+    n++;
+  });
+  var msg=document.getElementById('applyMsg');
+  if(n){
+    msg.textContent='✓ '+n+' value'+(n>1?'s':'')+' copied up to Machine setup';
+    msg.style.color='var(--good)';
+    document.getElementById(single?'curSingle':'curReg').scrollIntoView({behavior:'smooth',block:'center'});
+  } else {
+    msg.textContent='Nothing to copy yet — solve first.';
+    msg.style.color='var(--warn)';
+  }
+  setTimeout(function(){msg.textContent='';},5000);
+};
 
 // worked example: synthesize error from a known δ so the solver visibly recovers it
 document.getElementById('example').onclick=function(){
