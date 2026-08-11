@@ -207,8 +207,11 @@
           <div class="box" id="b305"><div class="lbl">Z</div><div class="set">Setting 305</div><div class="val" id="n305">—</div></div>
         </div>
       </div>
+      <div class="note" id="needCur" style="display:none;color:var(--warn)">
+        Enter your <b>current</b> MRZP settings up in <b>Machine setup</b> to get the exact new values &mdash; without them only the correction &delta; above is known.
+      </div>
       <div class="toolbar" style="margin-top:14px">
-        <button class="btn" id="apply">&#8593; Use these as the current values</button>
+        <button class="btn primary" id="apply">&#8593; Use these as the current values</button>
         <span class="note" id="applyMsg" style="margin-top:0;align-self:center"></span>
       </div>
       <div class="note">Copies the suggested values up into the <b>Machine setup</b> boxes, so after you type them into the control you can re-run O00005 and solve again from the new baseline. Values marked <b>n/a</b> are left alone.</div>
@@ -398,14 +401,14 @@ document.getElementById('solve').onclick=function(){
     var m256=parseFloat(document.getElementById('m256').value);
     var m257=parseFloat(document.getElementById('m257').value);
     var anyCur=!isNaN(m255)||!isNaN(m256)||!isNaN(m257);
-    mo.style.display=anyCur?'block':'none';
-    if(anyCur){
-      document.getElementById('n255').textContent=(!isNaN(m255)&&!sol.unc[0])?fmtAbs(m255+d[0]):'—';
-      document.getElementById('n256').textContent=(!isNaN(m256)&&!sol.unc[1])?fmtAbs(m256+d[1]):'—';
-      document.getElementById('n257').textContent=(!isNaN(m257)&&!sol.unc[2])?fmtAbs(m257+d[2]):'—';
-    }
+    mo.style.display='block';   // always show, so the Apply button is reachable
+    document.getElementById('n255').textContent=(!isNaN(m255)&&!sol.unc[0])?fmtAbs(m255+d[0]):(sol.unc[0]?'n/a':'—');
+    document.getElementById('n256').textContent=(!isNaN(m256)&&!sol.unc[1])?fmtAbs(m256+d[1]):(sol.unc[1]?'n/a':'—');
+    document.getElementById('n257').textContent=(!isNaN(m257)&&!sol.unc[2])?fmtAbs(m257+d[2]):(sol.unc[2]?'n/a':'—');
+    document.getElementById('needCur').style.display=anyCur?'none':'';
   } else {
     mo.style.display='block';
+    document.getElementById('needCur').style.display='none';
     var selBase=rotary==='master'?300:303, othBase=rotary==='master'?303:300;
     var othAxis=rotary==='master'?combo[1]:combo[0];
     // solved rotary: current + delta (skip the axis it spins about / unconstrained)
@@ -488,7 +491,7 @@ document.getElementById('apply').onclick=function(){
     msg.style.color='var(--good)';
     document.getElementById(single?'curSingle':'curReg').scrollIntoView({behavior:'smooth',block:'center'});
   } else {
-    msg.textContent='Nothing to copy yet — solve first.';
+    msg.textContent='Nothing to copy — enter your current settings above, then solve.';
     msg.style.color='var(--warn)';
   }
   setTimeout(function(){msg.textContent='';},5000);
